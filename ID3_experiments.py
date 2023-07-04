@@ -54,15 +54,13 @@ def basic_experiment(x_train, y_train, x_test, y_test, formatted_print=False):
     Use ID3 model, to train on the training dataset and evaluating the accuracy in the test set.
     """
 
-    # TODO:
-    #  - Instate ID3 decision tree instance.
-    #  - Fit the tree on the training data set.
-    #  - Test the model on the test set (evaluate the accuracy) and print the result.
-
     acc = None
 
     # ====== YOUR CODE: ======
-    raise NotImplementedError
+    tree = ID3(attributes_names)
+    tree.fit(x_train, y_train)
+    prediction = tree.predict(x_test)
+    acc = accuracy(y_test, prediction)
     # ========================
 
     assert acc > 0.9, 'you should get an accuracy of at least 90% for the full ID3 decision tree'
@@ -70,18 +68,13 @@ def basic_experiment(x_train, y_train, x_test, y_test, formatted_print=False):
 
 
 # ========================================================================
-def cross_validation_experiment(plot_graph=True):
+def cross_validation_experiment(x_d, y_d, plot_graph=True):
     """
     Use cross validation to find the best M for the ID3 model, used as pruning parameter.
 
     :param plot_graph: either to plot or not the experiment result, default is True
     :return: best_m: the value of M with the highest mean accuracy across folds
     """
-    # TODO:
-    #  - fill the m_choices list with  at least 5 different values for M.
-    #  - Instate ID3 decision tree instance.
-    #  - Fit the tree on the training data set.
-    #  - Test the model on the test set (evaluate the accuracy) and print the result.
 
     best_m = None
     accuracies = []
@@ -89,8 +82,20 @@ def cross_validation_experiment(plot_graph=True):
     num_folds = 5
 
     # ====== YOUR CODE: ======
+
+    m_choices = [0, 25, 50, 75, 100]
     assert len(m_choices) >= 5, 'fill the m_choices list with  at least 5 different values for M.'
-    raise NotImplementedError
+    kf = KFold(n_splits=5, shuffle=True, random_state=208932335)
+    for m in m_choices:
+        acc_sum, acc_count = 0, 0
+        for (train_index, test_index) in kf.split(x_d, y_d):
+            tree = ID3(attributes_names, min_for_pruning=m)
+            tree.fit(x_d[train_index], y_d[train_index])
+            prediction = tree.predict(x_d[test_index])
+            acc_sum += accuracy(y_d[test_index], prediction)
+            acc_count += 1
+        accuracies.append(acc_sum / acc_count)
+    best_m = m_choices[np.array(accuracies).argmax()]
 
     # ========================
     accuracies_mean = np.array([np.mean(acc) * 100 for acc in accuracies])
@@ -116,15 +121,13 @@ def best_m_test(x_train, y_train, x_test, y_test, min_for_pruning):
         :return: acc: the accuracy value of ID3 decision tree instance that using the best_m as the pruning parameter.
     """
 
-    # TODO:
-    #  - Instate ID3 decision tree instance (using pre-training pruning condition).
-    #  - Fit the tree on the training data set.
-    #  - Test the model on the test set (evaluate the accuracy) and return the result.
-
     acc = None
 
     # ====== YOUR CODE: ======
-    raise NotImplementedError
+    tree = ID3(attributes_names, min_for_pruning=min_for_pruning)
+    tree.fit(x_train, y_train)
+    predictions = tree.predict(x_test)
+    acc = accuracy(y_test, predictions)
     # ========================
 
     return acc
@@ -150,7 +153,8 @@ if __name__ == '__main__':
            modify the value from False to True to plot the experiment result
     """
     plot_graphs = True
-    best_m = cross_validation_experiment(plot_graph=plot_graphs)
+    best_m = cross_validation_experiment(data_split[0], data_split[1], plot_graph=plot_graphs)
+    best_m = 50
     print(f'best_m = {best_m}')
 
     """

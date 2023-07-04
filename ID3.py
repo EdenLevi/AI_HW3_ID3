@@ -24,15 +24,15 @@ class ID3:
         :param labels: rows data labels.
         :return: entropy value.
         """
-        # TODO:
-        #  Calculate the entropy of the data as shown in the class.
-        #  - You can use counts as a helper dictionary of label -> count, or implement something else.
 
         counts = class_counts(rows, labels)
         impurity = 0.0
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        num_of_examples = len(rows)
+        for label in counts.keys():
+            prob_l = counts[label] / num_of_examples
+            impurity -= prob_l * math.log2(prob_l)
         # ========================
 
         return impurity
@@ -48,15 +48,16 @@ class ID3:
         :param current_uncertainty: the current uncertainty of the current node
         :return: the info gain for splitting the current node into the two children left and right.
         """
-        # TODO:
-        #  - Calculate the entropy of the data of the left and the right child.
-        #  - Calculate the info gain as shown in class.
         assert (len(left) == len(left_labels)) and (len(right) == len(right_labels)), \
             'The split of current node is not right, rows size should be equal to labels size.'
 
         info_gain_value = 0.0
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        info_gain_value = current_uncertainty
+        left_fraction = len(left) / (len(left) + len(right))
+        right_fraction = len(right) / (len(left) + len(right))
+        info_gain_value -= (left_fraction * self.entropy(left, left_labels))
+        info_gain_value -= (right_fraction * self.entropy(right, right_labels))
         # ========================
 
         return info_gain_value
@@ -70,16 +71,22 @@ class ID3:
         :param current_uncertainty: the current uncertainty of the current node
         :return: Tuple of (gain, true_rows, true_labels, false_rows, false_labels)
         """
-        # TODO:
-        #   - For each row in the dataset, check if it matches the question.
-        #   - If so, add it to 'true rows', otherwise, add it to 'false rows'.
-        #   - Calculate the info gain using the `info_gain` method.
 
         gain, true_rows, true_labels, false_rows, false_labels = None, None, None, None, None
         assert len(rows) == len(labels), 'Rows size should be equal to labels size.'
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        true_rows, true_labels, false_rows, false_labels = [], [], [], []
+
+        for idx, row in enumerate(rows):
+            if question.match(row):
+                true_rows.append(row)
+                true_labels.append(labels[idx])
+            else:
+                false_rows.append(row)
+                false_labels.append(labels[idx])
+        gain = self.info_gain(true_rows, true_labels, false_rows, false_labels, current_uncertainty)
+
         # ========================
 
         return gain, true_rows, true_labels, false_rows, false_labels
@@ -91,17 +98,20 @@ class ID3:
         :param labels: rows data labels.
         :return: Tuple of (best_gain, best_question, best_true_rows, best_true_labels, best_false_rows, best_false_labels)
         """
-        # TODO:
-        #   - For each feature of the dataset, build a proper question to partition the dataset using this feature.
-        #   - find the best feature to split the data. (using the `partition` method)
         best_gain = - math.inf  # keep track of the best information gain
         best_question = None  # keep train of the feature / value that produced it
         best_false_rows, best_false_labels = None, None
         best_true_rows, best_true_labels = None, None
         current_uncertainty = self.entropy(rows, labels)
-
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        for idx, feature in enumerate(self.label_names[1:]):
+            feature_values = sorted(list(set([row[idx] for row in rows])))
+            for value_idx in range(len(feature_values) - 1):
+                question = Question(feature, idx, (feature_values[value_idx] + feature_values[value_idx + 1])/2)
+                curr_values = self.partition(rows, labels, question, current_uncertainty)
+                if best_gain <= curr_values[0]:
+                    best_gain, best_true_rows, best_true_labels, best_false_rows, best_false_labels = curr_values
+                    best_question = question
         # ========================
 
         return best_gain, best_question, best_true_rows, best_true_labels, best_false_rows, best_false_labels
@@ -115,15 +125,18 @@ class ID3:
                 or leaf if we have to prune this branch (in which cases ?)
 
         """
-        # TODO:
-        #   - Try partitioning the dataset using the feature that produces the highest gain.
-        #   - Recursively build the true, false branches.
-        #   - Build the Question node which contains the best question with true_branch, false_branch as children
         best_question = None
         true_branch, false_branch = None, None
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        if not self.entropy(rows, labels):
+            return Leaf(rows, labels)
+        if len(labels) <= self.min_for_pruning:
+            return Leaf(rows, labels)
+        values = self.find_best_split(rows, labels)
+        best_question = values[1]
+        true_branch = self.build_tree(values[2], values[3])
+        false_branch = self.build_tree(values[4], values[5])
         # ========================
 
         return DecisionNode(best_question, true_branch, false_branch)
@@ -134,10 +147,9 @@ class ID3:
         :param x_train: A labeled training data.
         :param y_train: training data labels.
         """
-        # TODO: Build the tree that fits the input data and save the root to self.tree_root
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        self.tree_root = self.build_tree(x_train, y_train)
         # ========================
 
     def predict_sample(self, row, node: DecisionNode or Leaf = None):
@@ -146,16 +158,24 @@ class ID3:
         :param row: vector of shape (1,D).
         :return: The row prediction.
         """
-        # TODO: Implement ID3 class prediction for set of data.
-        #   - Decide whether to follow the true-branch or the false-branch.
-        #   - Compare the feature / value stored in the node, to the example we're considering.
 
         if node is None:
             node = self.tree_root
         prediction = None
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        if type(node) is Leaf:
+            max_value, max_key = -math.inf, None
+            for key, value in node.predictions.items():
+                if max_value < value:
+                    max_value = value
+                    max_key = key
+            return max_key
+
+        if node.question.match(row):
+            prediction = self.predict_sample(row, node.true_branch)
+        else:
+            prediction = self.predict_sample(row, node.false_branch)
         # ========================
 
         return prediction
@@ -166,13 +186,12 @@ class ID3:
         :param rows: vector of shape (N,D) where N is the number of samples.
         :return: A vector of shape (N,) containing the predicted classes.
         """
-        # TODO:
-        #  Implement ID3 class prediction for set of data.
 
         y_pred = None
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError
+        predictions = [self.predict_sample(row) for row in rows]
+        y_pred = np.array(predictions)
         # ========================
 
         return y_pred
